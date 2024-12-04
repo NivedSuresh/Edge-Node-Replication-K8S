@@ -1,0 +1,15 @@
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+  - role: control-plane
+    extraMounts:
+      - hostPath: /Users/apple/data/postgres-pv
+        containerPath: /data/postgres-pv
+  - role: worker
+    extraMounts:
+      - hostPath: /Users/apple/data/postgres-pv
+        containerPath: /data/postgres-pv
+  - role: worker
+    extraMounts:
+      - hostPath: /Users/apple/data/postgres-pv
+        containerPath: /data/postgres-pv

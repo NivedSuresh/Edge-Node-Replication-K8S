@@ -1,0 +1,64 @@
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaConnect
+metadata:
+  name: postgres-sink-connect
+  namespace: kafka
+  annotations:
+    strimzi.io/use-connector-resources: "true"
+spec:
+  version: 3.2.3
+  replicas: 1
+  bootstrapServers: my-cluster-kafka-bootstrap:9092
+  
+  config:
+    key.converter: org.apache.kafka.connect.json.JsonConverter
+    value.converter: org.apache.kafka.connect.json.JsonConverter
+    key.converter.schemas.enable: false
+    value.converter.schemas.enable: false
+    group.id: connect-cluster  # Group ID for the Connect cluster
+    config.storage.replication.factor: 3  # Replication factor for connector configuration storage
+    offset.storage.replication.factor: 3  # Replication factor for offset storage (tracks processed records)
+    status.storage.replication.factor: 3  # Replication factor for status storage (connector task statuses)
+    offset.storage.topic: connect-offsets  # Kafka topic to store connector offsets
+    config.storage.topic: connect-configs  # Kafka topic to store connector configuration
+    status.storage.topic: connect-status  # Kafka topic to store connector task statuses
+    
+  build:
+    output:
+      type: docker  # Build output type is Docker
+      image: nivedsuresh/postgres-source-connect-cluster:latest  # Docker image for the Connect cluster
+      pushSecret: dockerhub  # Docker registry secret for pushing the image
+    plugins:
+      - name: jdbc-postgres-sink-plugin
+        artifacts:
+          - type: tgz  # Type of artifact (tarball in this case)
+            url: https://repo1.maven.org/maven2/io/debezium/debezium-connector-jdbc/3.0.4.Final/debezium-connector-jdbc-3.0.4.Final-plugin.tar.gz # URL of the connector plugin
+            sha512sum: 0d71db078e1868b0e312b4979e78bef4a01471ea1d7284000423d9e4fddbfde6dd1a30cd0908e75155843d0ac3a5f0a151f40e7ef67e9f2fc57af278b4b65cc8  # SHA-512 checksum for integrity verification
+
+
+---
+
+
+
+
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaConnector
+metadata:
+  name: postgres-sink-connector
+  labels:
+    strimzi.io/cluster: postgres-sink-connect
+spec:
+  class: io.confluent.connect.jdbc.JdbcSinkConnector
+  tasksMax: 1
+  config:
+    connection.url: jdbc:postgresql://postgres-target:5432/targetdb
+    connection.user: postgres
+    connection.password: "12345"  # Use secrets!
+    topics: postgres-source-server.public.* # Very important: match the server.name
+    auto.create: "true"
+    auto.evolve: "true"
+    insert.mode: "upsert"
+    pk.mode: "record_key"
+    key.converter: org.apache.kafka.connect.json.JsonConverter
+    value.converter: org.apache.kafka.connect.json.JsonConverter
+    delete.enabled: "true"

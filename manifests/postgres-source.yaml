@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres-source
+  namespace: kafka
+spec:
+  serviceName: postgres-source
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres-source
+  template:
+    metadata:
+      labels:
+        app: postgres-source
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:latest
+          ports:
+            - containerPort: 5432
+              name: postgres
+          env:
+            - name: POSTGRES_PASSWORD  # Less secure - only for testing
+              value: "12345"
+            - name: POSTGRES_USER # Add username
+              value: "postgres" # Default postgres user
+            - name: POSTGRES_DB
+              value: sourcedb
+          volumeMounts:  # Even without PV, keep the mount for emptyDir
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+  volumeClaimTemplates: # Data won't be persistent!
+    - metadata:
+        name: postgres-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 1Gi # Size is less relevant with emptyDir
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-source
+  namespace: kafka
+spec:
+  selector:
+    app: postgres-source
+  ports:
+    - protocol: TCP
+      port: 5432  # Expose PostgreSQL on port 5432
+      targetPort: 5432  # Direct traffic to port 5432 on the PostgreSQL container
+  clusterIP: None  # This makes it a headless service, typically used with StatefulSets

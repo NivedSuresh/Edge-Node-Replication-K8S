@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: kafka-tools
+  namespace: kafka
+  labels:
+    app: kafka-tools
+spec:
+  containers:
+    - name: kafka-tools
+      image: confluentinc/cp-kafka:latest
+      command:
+        - "sleep"
+        - "infinity"
+      stdin: true
+      tty: true
+  restartPolicy: Never
